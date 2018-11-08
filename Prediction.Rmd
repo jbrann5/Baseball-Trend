@@ -1,0 +1,131 @@
+---
+title: "Predictive Model"
+author: "Jennifer Brann"
+date: "11/4/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(glmnet)
+library(pROC)
+library(ggplot2)
+```
+
+```{r}
+strikeouts <- read.csv("strikeouts.csv")
+```
+
+I began by evaluating the dataset and looking at the different variables that would help predict strikeouts. I am looking at the structure of the data and making sure that the data set is ready to begin analyzing.
+
+```{r, results='hide'}
+str(strikeouts)
+```
+```{r, results='hide'}
+names(strikeouts)
+```
+```{r, results='hide'}
+sum(is.na(strikeouts))
+```
+
+Within the design on my model, I plan on creating a model that had all the variables to see which contributed more to strikeout rate. The variables that didn't significantly contribute to strikeouts at a 0.05 level I removed.
+
+```{r}
+trend1 <- glm(K.~ G + IP + ERA + FIP + xFIP + AVG + BB. + Swing. + Contact. + GB. + LD. + FB., 
+              strikeouts, 
+              family = gaussian("identity"))
+summary(trend1)
+```
+
+I continued to remove  variables with the higher significant levels one by one until I found a model that all the variables have a lower signicant level (p-value) than 0.01. I decided to use the elimination process because as you take more variables out of the model the significant levels and coefficients for each variable change.
+
+```{r}
+trend2 <- update(trend1, .~. -G -FIP -AVG -GB. -LD. -FB.)
+summary(trend2)
+```
+
+```{r, results='hide'}
+trend3 <- update(trend2, .~.-ERA)
+summary(trend3)
+```
+
+```{r, results='hide'}
+trend4 <- update(trend3, .~. -IP)
+summary(trend4)
+```
+
+```{r, results='hide'}
+trend5 <- update(trend4, .~. -Swing.)
+summary(trend5)
+```
+
+```{r}
+final <- lm(K.~ xFIP + BB. + Contact., strikeouts)
+summary(final)
+```
+
+Trend 5 is my final model.
+The model is K% = 0.8132 -0.0442* xFIP + 0.3511 *BB. - 0.5571*Contact. 
+
+Key numbers to notice is that R^2 is equal to 0.829 (R equals 0.91), RSE equals 0.027, and all the p-values are lower than 0.01. 
+The high R^2/ R value (correlation value) indicates that the variables chosen strongly correlates with strikeout rate. The low RSE (residual standard error) indicates that the model fits very well with the strikeout rate data. For reference, if RSE equals 0 then the model would fit the data perfectly. All the very low p-values mean that these three variables are significant when determining strikeout rate. All of these key numbers help support that these three variables create a strong model for predicting the strikeout rate for the second half of the season.  
+
+Now to predict the strikeouts for the second half. The variable "Predict" are my predictions for the strikeout rate for the second half the season.
+
+```{r}
+Predict <- predict(trend5, strikeouts, type = "response")
+```
+
+
+Here I'm creating a plot that graphs my predictions verus the actual strikeout rate for the second half. The plot visually shows how closely related my predictions were to the real strikeout rate for the second half.
+
+```{r}
+ggplot(strikeouts) + 
+  geom_point(aes(x= Predict, y=X2ndHalfK.)) +
+  labs(x= "Predicted Strikeout Rate", 
+       y= "Actual Strikeout Rate", 
+       title = "Correlation beteween Predicted and Actual Strikeout Rate")
+```
+
+
+Next, I created a linear regression between the actual rate and my predicted rate. The results from the regression will show how well my model did at predicting the strikeout rate.
+```{r}
+accuracy <- lm(X2ndHalfK. ~ Predict, strikeouts)
+summary(accuracy)
+```
+
+The R^2 value is 0.3924 which means that my model explains 39.24% of the varaiation in the data. The R-value is 0.626. The R-value demonstrates the strength of the correlation between the predict and actual rate. For reference, the closer R-value is to 1 the better the model fits the actual strikeout rate for the second half. An R-value of 0.626 demonstrates that my model correlates with the actual strikeout rate.
+Another number to notice is the RSE is equal to 0.052. Again, the low RSE demonstrates that predictions help accurately predict strikeout rate for the second half.
+
+
+I included a residual plot to visually show that the residuals don’t have a pattern. A residual is a difference between the actual strikeout rate and the expected (predicted) strikeout rate. The residual value is how much my prediction is off from the actual rate. No pattern in the residual plot means that the linear regression is appropaite for the data. 
+
+
+```{r}
+Residual <- strikeouts$X2ndHalfK. - Predict
+ggplot(strikeouts, aes(x= Predict, y=Residual)) + 
+  geom_point() +
+  labs(x= "Predicted Strikeout Rate", 
+       y= "Residual", 
+       title = "Residual Plot")
+```
+
+Conclusion:
+
+Based on the evaluation, my final predictive model is K% = 0.8132 -0.0442*xFIP + 0.3511 *BB. - 0.5571*Contact.
+
+When deciding on which model to choose, I only chose the factors that had a signifacnt value (p-value) lower than 0.01. Based on the multiple linear regression model I chose, I found that the correlation value is 0.91 which demonstrates that these factors are strongly correlated with strikeout percentage. Along with the high R value, each variable has p-values lower than 0.001 meaning that these variables are significant in correlating the model with strikeout rate. 
+
+After creating my predictions for the second half, I created a linear regression between my predictions and the actual strikeout rate. With this regression, I got an R value of 0.626 and a low residual standard error value. Both of these results indicts that there is an association between my predictions for the second half and real strikeout rate.  
+
+
+
+
+
+
+
+
+
